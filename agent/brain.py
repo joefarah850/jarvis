@@ -184,6 +184,36 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "compose_message",
+            "description": "Draft, read aloud, get voice approval, then send a message. Use for Gmail, Google Chat, or WhatsApp. Handles the full compose → approve → send flow.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "platform": {
+                        "type": "string",
+                        "enum": ["gmail", "google chat", "whatsapp"],
+                        "description": "Where to send the message"
+                    },
+                    "recipient": {
+                        "type": "string",
+                        "description": "Email address, phone number, or contact name"
+                    },
+                    "intent": {
+                        "type": "string",
+                        "description": "What the message should say — summarize the user's intent"
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Any extra context to help write the message (optional)"
+                    },
+                },
+                "required": ["platform", "recipient", "intent"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "remember_fact",
             "description": "Store a personal fact about the user for future sessions. Use when user says 'remember that X' or 'note that X'.",
             "parameters": {
@@ -338,6 +368,9 @@ def _dispatch_tool(name: str, args: dict) -> str:
         elif name == "fetch_page":
             from agent.tools.search_tool import fetch_page
             return fetch_page(**args)
+        elif name == "compose_message":
+            from agent.tools.compose_tool import compose_message
+            return compose_message(**args)
         elif name == "remember_fact":
             from memory.context import remember_fact
             return remember_fact(**args)

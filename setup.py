@@ -423,7 +423,7 @@ def write_env(env: dict):
         f"WAKE_WORD={existing.get('WAKE_WORD', 'jarvis')}",
     ]
 
-    with open(ENV_FILE, "w") as f:
+    with open(ENV_FILE, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
 
     ok(f".env written to {ENV_FILE}")
