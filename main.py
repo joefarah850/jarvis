@@ -1,0 +1,120 @@
+"""
+Jarvis — main voice loop.
+Wake word → listen → transcribe → think → speak → repeat.
+End of session → memory review.
+"""
+import sys
+import os
+import time
+
+sys.path.insert(0, os.path.dirname(__file__))
+
+from audio.listener import listen_once
+from audio.transcriber import Transcriber
+from audio.speaker import Speaker
+from agent.brain import Brain
+from memory.context import MemoryReview
+
+try:
+    from config import WAKE_WORD
+except ImportError:
+    WAKE_WORD = ""
+
+USE_WAKE_WORD = bool(WAKE_WORD)
+EXIT_PHRASES  = {"goodbye", "bye jarvis", "shut down", "exit", "stop", "quit"}
+
+
+def contains_wake_word(text: str) -> bool:
+    return WAKE_WORD.lower() in text.lower()
+
+
+def is_exit(text: str) -> bool:
+    t = text.lower().strip().rstrip(".")
+    return any(phrase in t for phrase in EXIT_PHRASES)
+
+
+def main():
+    print("\n" + "=" * 50)
+    print("  J.A.R.V.I.S  —  Starting up")
+    print("=" * 50 + "\n")
+
+    transcriber = Transcriber()
+    speaker     = Speaker()
+    brain       = Brain()
+
+    speaker.speak("Systems online. How can I help?")
+    print("[Jarvis] Ready. Ctrl+C to exit.\n")
+
+    while True:
+        try:
+            # ── Wake word gate ────────────────────────────────────────────
+            if USE_WAKE_WORD:
+                print(f"[Jarvis] Waiting for '{WAKE_WORD}'...")
+                audio = listen_once(verbose=False)
+                if audio is None:
+                    continue
+                trigger = transcriber.transcribe(audio)
+                if not trigger or not contains_wake_word(trigger):
+                    continue
+                print(f"[Jarvis] Activated: '{trigger}'")
+                speaker.speak_nonblocking("Yes?")
+                time.sleep(0.5)
+
+            # ── Listen ────────────────────────────────────────────────────
+            print("[Jarvis] Listening...")
+            audio = listen_once(verbose=False)
+            if audio is None:
+                continue
+
+            # ── Transcribe ────────────────────────────────────────────────
+            text = transcriber.transcribe(audio)
+            if not text:
+                continue
+
+            print(f"\n[You]    {text}")
+
+            # ── Exit check ────────────────────────────────────────────────
+            if is_exit(text):
+                speaker.speak("One moment.")
+                _run_memory_review(brain, speaker, transcriber)
+                speaker.speak("Goodbye.")
+                print("[Jarvis] Shutting down.")
+                break
+
+            # ── Think ─────────────────────────────────────────────────────
+            response = brain.think(text, verbose=True)
+            if not response:
+                continue
+
+            print(f"[Jarvis] {response}\n")
+            speaker.speak(response)
+
+        except KeyboardInterrupt:
+            print("\n[Jarvis] Interrupted.")
+            speaker.speak("One moment.")
+            _run_memory_review(brain, speaker, transcriber)
+            speaker.speak("Goodbye.")
+            break
+        except Exception as e:
+            print(f"[Jarvis] Error: {e}")
+            speaker.speak("Something went wrong. Try again.")
+            continue
+
+
+def _run_memory_review(brain: Brain, speaker, transcriber):
+    """Run end-of-session memory review if there's conversation history."""
+    if len(brain.history) < 2:
+        return
+    try:
+        review = MemoryReview(speaker=speaker)
+        review.run(
+            history      = brain.history,
+            listen_fn    = listen_once,
+            transcribe_fn= transcriber.transcribe,
+        )
+    except Exception as e:
+        print(f"[Memory] Review error: {e}")
+
+
+if __name__ == "__main__":
+    main()

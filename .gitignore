@@ -1,0 +1,7 @@
+# .gitignore
+*.onnx
+*.bin
+.env
+__pycache__/
+.venv/
+*.json

@@ -1,0 +1,15 @@
+faster-whisper
+kokoro-onnx
+sounddevice
+numpy
+torch
+silero-vad
+ollama
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+python-dotenv
+ddgs
+pytz
+nvidia-cublas-cu12; sys_platform == "win32"
+nvidia-cudnn-cu12; sys_platform == "win32"
