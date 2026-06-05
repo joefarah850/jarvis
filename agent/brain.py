@@ -436,6 +436,20 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "hot_reload",
+            "description": "Reload a Python module so recent edits take effect without restarting Jarvis. Called automatically after edits, but can also be triggered manually.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Path to the .py file to reload (relative to workspace root)"},
+                },
+                "required": ["path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "remove_block",
             "description": "Remove a multi-line block from a file between two marker strings (inclusive). Use for deleting whole functions, classes, or multi-line dict/list entries. Always read_file first to get exact markers.",
             "parameters": {
@@ -477,12 +491,33 @@ _FILLER_ENDINGS = [
 ]
 
 def _clean_response(text: str) -> str:
+    """Strip think blocks, markdown, URLs, and filler phrases for clean TTS output."""
+    # Remove think blocks
     text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
+    # Remove markdown links [text](url) -> text
     text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
+    # Remove bare URLs
     text = re.sub(r'https?://\S+', '', text)
+    # Remove bold/italic markers **text** -> text, *text* -> text, __text__ -> text
+    text = re.sub(r'\*\*([^*]+)\*\*', r'\1', text)
+    text = re.sub(r'\*([^*]+)\*', r'\1', text)
+    text = re.sub(r'__([^_]+)__', r'\1', text)
+    text = re.sub(r'_([^_]+)_', r'\1', text)
+    # Remove markdown headers ### -> nothing
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    # Remove horizontal rules
+    text = re.sub(r'^[-*_]{3,}\s*$', '', text, flags=re.MULTILINE)
+    # Convert numbered lists "1. " -> just the text
+    text = re.sub(r'^\d+\.\s+', '', text, flags=re.MULTILINE)
+    # Convert bullet points "- " or "• " -> nothing
+    text = re.sub(r'^[\-•▸◆▶]\s+', '', text, flags=re.MULTILINE)
+    # Strip filler ending sentences
     for pattern in _FILLER_ENDINGS:
         text = re.sub(pattern, '', text)
-    return text.strip().rstrip('.')  
+    # Collapse multiple newlines/spaces
+    text = re.sub(r'\n{3,}', '\n', text)
+    text = re.sub(r'[ \t]+', ' ', text)
+    return text.strip()
 
 
 def _format_emails(raw_result: str) -> str:
@@ -550,6 +585,9 @@ def _dispatch_tool(name: str, args: dict) -> str:
         elif name == "remove_block":
             from agent.tools.code_tool import remove_block
             return remove_block(**args)
+        elif name == "hot_reload":
+            from agent.tools.code_tool import hot_reload
+            return hot_reload(**args)
         elif name == "get_time":
             from agent.tools.time_tool import get_time
             return get_time(**args)

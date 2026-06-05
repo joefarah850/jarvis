@@ -54,7 +54,11 @@ def append_file(path: str, content: str) -> str:
         # Ensure we start on a new line
         separator = "\n" if existing and not existing.endswith("\n") else ""
         p.write_text(existing + separator + content + "\n", encoding="utf-8")
-        return f"Appended to {path}:\n{content}"
+        result = f"Appended to {path}:\n{content}"
+        if p.suffix == ".py":
+            reload_result = hot_reload(path)
+            result += f"\n{reload_result}"
+        return result
     except PermissionError as e:
         return str(e)
     except Exception as e:
@@ -89,7 +93,12 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
 
         updated = content.replace(old_text, new_text, 1)
         p.write_text(updated, encoding="utf-8")
-        return f"Done. In {path}, replaced:\n- {repr(old_text[:80])}\n+ {repr(new_text[:80])}"
+        result = f"Done. In {path}, replaced:\n- {repr(old_text[:80])}\n+ {repr(new_text[:80])}"
+        # Auto hot-reload if it's a Python file
+        if p.suffix == ".py":
+            reload_result = hot_reload(path)
+            result += f"\n{reload_result}"
+        return result
 
     except PermissionError as e:
         return str(e)
@@ -175,12 +184,49 @@ def remove_line(path: str, containing: str) -> str:
             )
 
         p.write_text("".join(kept), encoding="utf-8")
-        return f"Removed {removed} line(s) containing {repr(containing)} from {path}."
+        result = f"Removed {removed} line(s) containing {repr(containing)} from {path}."
+        if p.suffix == ".py":
+            reload_result = hot_reload(path)
+            result += f"\n{reload_result}"
+        return result
 
     except PermissionError as e:
         return str(e)
     except Exception as e:
         return f"Error removing line from {path}: {e}"
+
+
+def hot_reload(path: str) -> str:
+    """
+    Reload a Python module after editing it so changes take effect
+    without restarting Jarvis. Works for tools, brain, config.
+    """
+    import importlib
+    import sys
+
+    try:
+        p = _resolve(path)
+        if not p.exists():
+            return f"File not found: {path}"
+        if p.suffix != ".py":
+            return f"Hot reload only works for .py files. {path} will take effect on next restart."
+
+        # Convert file path to module name
+        # e.g. agent/tools/email_tool.py -> agent.tools.email_tool
+        rel = p.relative_to(_WORKSPACE)
+        module_name = str(rel.with_suffix("")).replace("\\", ".").replace("/", ".")
+
+        if module_name in sys.modules:
+            importlib.reload(sys.modules[module_name])
+            return f"Reloaded {module_name} — changes are live."
+        else:
+            # Module not loaded yet — import it
+            import importlib as il
+            il.import_module(module_name)
+            return f"Loaded {module_name} — changes are live."
+
+    except Exception as e:
+        return f"Hot reload failed for {path}: {e}\nChanges will apply on next Jarvis restart."
 
 
 def remove_block(path: str, start_text: str, end_text: str) -> str:

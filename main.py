@@ -44,6 +44,10 @@ def main():
 
     speaker.speak("Systems online. How can I help?")
 
+    # Start UI WebSocket bridge
+    from ui.bridge import start_bridge, set_status, add_transcript, push_todos, push_reminders
+    start_bridge()
+
     # Wire compose tool to audio I/O so approval loop can speak/listen
     from agent.tools.compose_tool import set_io
     set_io(speaker, listen_once, transcriber.transcribe)
@@ -67,22 +71,28 @@ def main():
                     continue
                 print(f"[Jarvis] Activated: '{trigger}'")
                 speaker.speak_nonblocking("Yes?")
+                set_status("idle")
                 time.sleep(0.5)
 
-            # ── Listen ────────────────────────────────────────────────────
+            # ── Listen ────────────────────────────────────────────
             print("[Jarvis] Listening...")
+            set_status("listening")
             audio = listen_once(verbose=False)
             if audio is None:
+                set_status("idle")
                 continue
 
-            # ── Transcribe ────────────────────────────────────────────────
+            # ── Transcribe ─────────────────────────────────────────
+            set_status("thinking")
             text = transcriber.transcribe(audio)
             if not text:
+                set_status("idle")
                 continue
 
             print(f"\n[You]    {text}")
+            add_transcript("user", text)
 
-            # ── Exit check ────────────────────────────────────────────────
+            # ── Exit check ──────────────────────────────────────────
             if is_exit(text):
                 speaker.speak("One moment.")
                 _run_memory_review(brain, speaker, transcriber)
@@ -90,13 +100,19 @@ def main():
                 print("[Jarvis] Shutting down.")
                 break
 
-            # ── Think ─────────────────────────────────────────────────────
+            # ── Think ───────────────────────────────────────────────
             response = brain.think(text, verbose=True)
             if not response:
+                set_status("idle")
                 continue
 
             print(f"[Jarvis] {response}\n")
+            add_transcript("jarvis", response)
+            push_todos()
+            push_reminders()
+            set_status("speaking")
             speaker.speak(response)
+            set_status("idle")
 
         except KeyboardInterrupt:
             print("\n[Jarvis] Interrupted.")
