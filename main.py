@@ -34,15 +34,16 @@ def is_exit(text: str) -> bool:
 
 
 def main():
+    from config import ASSISTANT_NAME
     print("\n" + "=" * 50)
-    print("  J.A.R.V.I.S  —  Starting up")
+    print(f"  {ASSISTANT_NAME.upper()}  —  Starting up")
     print("=" * 50 + "\n")
 
     transcriber = Transcriber()
     speaker     = Speaker()
     brain       = Brain()
 
-    speaker.speak("Systems online. How can I help?")
+    speaker.speak(f"{ASSISTANT_NAME} online. How can I help?")
 
     # Start UI WebSocket bridge
     from ui.bridge import start_bridge, set_status, add_transcript, push_todos, push_reminders
@@ -56,7 +57,7 @@ def main():
     from agent.tools.reminder_tool import start_reminder_checker, set_reminder_io
     set_reminder_io(speaker, listen_once, transcriber.transcribe, brain)
     start_reminder_checker()
-    print("[Jarvis] Ready. Ctrl+C to exit.\n")
+    print(f"[{ASSISTANT_NAME}] Ready. Ctrl+C to exit.\n")
 
     while True:
         try:
@@ -75,7 +76,7 @@ def main():
                 time.sleep(0.5)
 
             # ── Listen ────────────────────────────────────────────
-            print("[Jarvis] Listening...")
+            print(f"[{ASSISTANT_NAME}] Listening...")
             set_status("listening")
             audio = listen_once(verbose=False)
             if audio is None:
@@ -97,7 +98,7 @@ def main():
                 speaker.speak("One moment.")
                 _run_memory_review(brain, speaker, transcriber)
                 speaker.speak("Goodbye.")
-                print("[Jarvis] Shutting down.")
+                print(f"[{ASSISTANT_NAME}] Shutting down.")
                 break
 
             # ── Think ───────────────────────────────────────────────
@@ -106,7 +107,7 @@ def main():
                 set_status("idle")
                 continue
 
-            print(f"[Jarvis] {response}\n")
+            print(f"[{ASSISTANT_NAME}] {response}\n")
             add_transcript("jarvis", response)
             push_todos()
             push_reminders()
@@ -115,7 +116,7 @@ def main():
             set_status("idle")
 
         except KeyboardInterrupt:
-            print("\n[Jarvis] Interrupted.")
+            print(f"\n[{ASSISTANT_NAME}] Interrupted.")
             speaker.speak("One moment.")
             _run_memory_review(brain, speaker, transcriber)
             speaker.speak("Goodbye.")

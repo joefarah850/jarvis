@@ -269,7 +269,7 @@
 
 <!-- Top bar -->
 <div id="topbar">
-  <div class="logo">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div>
+  <div class="logo" id="hud-name">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div>
   <div id="stats">
     <div class="stat"><span class="val" id="stat-time">--:--</span><span>LOCAL TIME</span></div>
     <div class="stat"><span class="val" id="stat-date">---</span><span>DATE</span></div>
@@ -343,7 +343,7 @@
 
 <!-- Bottom bar -->
 <div id="bottombar">
-  <span>JARVIS v1.0 // ONLINE</span>
+  <span id="hud-version">JARVIS v1.0 // ONLINE</span>
   <span id="conn-status">◉ CONNECTING...</span>
   <span>PRESS ESC TO EXIT FULLSCREEN</span>
 </div>
@@ -494,6 +494,15 @@ const handlers = {
     el.innerHTML = msg.facts.map(f => `
       <div class="memory-item"><span>${f}</span></div>
     `).join('')
+  },
+
+  name(msg) {
+    const n = msg.value || 'Jarvis'
+    // Update logo — turn name into spaced letters like J.A.R.V.I.S
+    const spaced = n.toUpperCase().split('').join('<span>.</span>')
+    document.getElementById('hud-name').innerHTML = spaced
+    document.getElementById('hud-version').textContent = `${n.toUpperCase()} v1.0 // ONLINE`
+    document.title = n.toUpperCase()
   },
 
   stats(msg) {

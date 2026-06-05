@@ -7,10 +7,18 @@ from ollama import Client
 
 client = Client(host=OLLAMA_BASE_URL)
 
+def _get_name() -> str:
+    """Get the assistant name from config."""
+    try:
+        from config import ASSISTANT_NAME
+        return ASSISTANT_NAME
+    except Exception:
+        return "Jarvis"
+
 SYSTEM_PROMPT_TEMPLATE = """/no_think
-You are Jarvis. Your name is Jarvis. When composing messages on behalf of the user, sign off as Jarvis or introduce yourself as Jarvis — never as "[Your Name]" or "[Name]".
+You are {assistant_name}. Your name is {assistant_name}. When composing messages on behalf of the user, sign off as {assistant_name} or introduce yourself as {assistant_name} — never as "[Your Name]" or "[Name]".
 Current date and time: {datetime_now}. Always use this exact date when searching for current events, standings, news, or time. Never assume a date or use older years.
-You are Jarvis, a sharp and efficient AI assistant. Short, confident sentences. No filler. No markdown headers. No emojis.
+You are {assistant_name}, a sharp and efficient AI assistant. Short, confident sentences. No filler. No markdown headers. No emojis.
 
 Tool selection rules:
 - For TIME questions ("what time is it in X", "current time in Y"): ALWAYS use get_time, never web_search.
@@ -68,7 +76,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "set_reminder",
-            "description": "Set a one-time or recurring reminder. Jarvis will speak it aloud and optionally send a WhatsApp or email notification when it fires.",
+            "description": f"Set a one-time or recurring reminder. {_get_name()} will speak it aloud and optionally send a WhatsApp or email notification when it fires.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -437,7 +445,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "hot_reload",
-            "description": "Reload a Python module so recent edits take effect without restarting Jarvis. Called automatically after edits, but can also be triggered manually.",
+            "description": f"Reload a Python module so recent edits take effect without restarting {_get_name()}. Called automatically after edits, but can also be triggered manually.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -746,9 +754,13 @@ class Brain:
 
         from datetime import datetime
         from memory.context import get_memory_context
+        from config import ASSISTANT_NAME
         now_str    = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
         memory_ctx = get_memory_context()
-        system     = SYSTEM_PROMPT_TEMPLATE.format(datetime_now=now_str)
+        system     = SYSTEM_PROMPT_TEMPLATE.format(
+            datetime_now=now_str,
+            assistant_name=ASSISTANT_NAME,
+        )
         if memory_ctx:
             system = system + f"\n\n{memory_ctx}"
         messages = [{"role": "system", "content": system}] + self.history
@@ -833,8 +845,12 @@ class Brain:
         )
 
         from datetime import datetime
+        from config import ASSISTANT_NAME
         now_str = datetime.now().strftime("%A, %B %d, %Y %I:%M %p")
-        system = SYSTEM_PROMPT_TEMPLATE.format(datetime_now=now_str)
+        system = SYSTEM_PROMPT_TEMPLATE.format(
+            datetime_now=now_str,
+            assistant_name=ASSISTANT_NAME,
+        )
         messages = [
             {"role": "system", "content": system},
         ] + self.history[:-1] + [

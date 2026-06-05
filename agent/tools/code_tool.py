@@ -195,7 +195,14 @@ def remove_line(path: str, containing: str) -> str:
     except Exception as e:
         return f"Error removing line from {path}: {e}"
 
-
+def _get_name() -> str:
+    """Get the assistant name from config."""
+    try:
+        from config import ASSISTANT_NAME
+        return ASSISTANT_NAME
+    except Exception:
+        return "Jarvis"
+    
 def hot_reload(path: str) -> str:
     """
     Reload a Python module after editing it so changes take effect
@@ -226,7 +233,8 @@ def hot_reload(path: str) -> str:
             return f"Loaded {module_name} — changes are live."
 
     except Exception as e:
-        return f"Hot reload failed for {path}: {e}\nChanges will apply on next Jarvis restart."
+        assistant_name = _get_name()
+        return f"Hot reload failed for {path}: {e}\nChanges will apply on next {assistant_name} restart."
 
 
 def remove_block(path: str, start_text: str, end_text: str) -> str:

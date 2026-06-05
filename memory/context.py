@@ -21,6 +21,13 @@ from ollama import Client
 client     = Client(host=OLLAMA_BASE_URL)
 MEMORY_FILE = Path(__file__).parent.parent / "memory.json"
 
+def _get_name() -> str:
+    """Get the assistant name from config."""
+    try:
+        from config import ASSISTANT_NAME
+        return ASSISTANT_NAME
+    except Exception:
+        return "Jarvis"
 
 # ── Storage ───────────────────────────────────────────────────────────────────
 
@@ -110,7 +117,7 @@ def extract_facts_from_conversation(history: list[dict]) -> list[str]:
         if role == "user":
             lines.append(f"User: {content}")
         elif role == "assistant":
-            lines.append(f"Jarvis: {content}")
+            lines.append(f"{_get_name()}: {content}")
 
     transcript = "\n".join(lines[-40:])  # last 20 turns max
 
@@ -159,7 +166,7 @@ class MemoryReview:
         self.candidates: list[str] = []
 
     def _say(self, text: str):
-        print(f"[Jarvis] {text}")
+        print(f"[{_get_name()}] {text}")
         if self.speaker:
             self.speaker.speak(text)
 

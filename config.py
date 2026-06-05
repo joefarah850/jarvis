@@ -29,6 +29,9 @@ VAD_SILENCE_TIMEOUT = float(os.getenv("VAD_SILENCE_TIMEOUT", "1.2"))
 # Example in .env: WORKSPACE_ROOT=C:/Users/<user>/Desktop
 WORKSPACE_ROOT = os.getenv("WORKSPACE_ROOT", "")
 
+# ── Assistant identity ───────────────────────────────────────────────────────
+ASSISTANT_NAME = os.getenv("ASSISTANT_NAME", "Jarvis")
+
 # ── Wake word ────────────────────────────────────────────────────────────────
 # Set to a word Jarvis must hear before listening. Leave empty to always listen.
 WAKE_WORD = os.getenv("WAKE_WORD", "")

@@ -145,6 +145,13 @@ def _next_fire(fire_time: str, recurrence: str | None) -> str:
 
     return base.isoformat()
 
+def _get_name() -> str:
+    """Get the assistant name from config."""
+    try:
+        from config import ASSISTANT_NAME
+        return ASSISTANT_NAME
+    except Exception:
+        return "Jarvis"
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
@@ -295,4 +302,4 @@ def start_reminder_checker():
         return
     _checker_thread = threading.Thread(target=_checker_loop, daemon=True)
     _checker_thread.start()
-    print("[Reminder] Background checker started")
+    print(f"[{_get_name()}] Background checker started")

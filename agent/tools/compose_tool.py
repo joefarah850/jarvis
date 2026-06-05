@@ -111,6 +111,15 @@ def _char_similarity(a: str, b: str) -> float:
         else:
             break
     return jaro + prefix * 0.1 * (1 - jaro)
+
+def _get_name() -> str:
+    """Get the assistant name from config."""
+    try:
+        from config import ASSISTANT_NAME
+        return ASSISTANT_NAME
+    except Exception:
+        return "Jarvis"
+    
 from ollama import Client
 
 client = Client(host=OLLAMA_BASE_URL)
@@ -142,8 +151,8 @@ def _draft(platform: str, recipient: str, intent: str, context: str = "") -> str
 
     prompt = (
         f"{hint}\n\n"
-        f"You are Jarvis, an AI voice assistant. Your name is Jarvis.\n"
-        f"When introducing yourself, explain that you are an AI assistant called Jarvis "
+        f"You are {_get_name()}, an AI voice assistant. Your name is {_get_name()}.\n"
+        f"When introducing yourself, explain that you are an AI assistant called {_get_name()} "
         f"that can help with tasks like reading emails, managing calendars, searching the web, "
         f"sending messages, setting reminders, and more.\n"
         f"IMPORTANT: Do NOT use emojis — they cause technical issues when sending.\n\n"
@@ -182,7 +191,7 @@ def _speak(text: str):
     if _speaker:
         _speaker.speak(text)
     else:
-        print(f"[Jarvis] {text}")
+        print(f"[{_get_name()}] {text}")
 
 
 def _listen() -> str:
@@ -318,7 +327,7 @@ def send_gmail(recipient: str, message: str) -> str:
 
     # Parse subject/body
     lines   = message.strip().splitlines()
-    subject = "Message from Jarvis"
+    subject = f"Message from {_get_name()}"
     body    = message
     if lines and lines[0].lower().startswith("subject:"):
         subject = lines[0][8:].strip()

@@ -107,6 +107,11 @@ async def _handler(websocket):
     _clients.add(websocket)
     try:
         # Send current state immediately on connect
+        try:
+            from config import ASSISTANT_NAME
+        except Exception:
+            ASSISTANT_NAME = "Jarvis"
+        await websocket.send(json.dumps({"type": "name", "value": ASSISTANT_NAME}))
         await websocket.send(json.dumps({"type": "status", "value": _status}))
         for entry in _transcript[-20:]:
             await websocket.send(json.dumps({"type": "transcript", **entry}))

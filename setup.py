@@ -305,9 +305,13 @@ def setup_microphone(env: dict):
 def setup_wake_word(env: dict):
     title("Step 6 — Wake word & voice")
 
-    info("A wake word means Jarvis only listens after you say it.")
+    name = ask("What should your assistant be called?", "Jarvis")
+    env["ASSISTANT_NAME"] = name
+    ok(f"Assistant name: {name}")
+
+    info(f"\nA wake word means {name} only listens after you say it.")
     info("Leave blank to always listen.")
-    wake_word = ask("Wake word (e.g. 'jarvis', or Enter to skip)", "jarvis")
+    wake_word = ask(f"Wake word (e.g. '{name.lower()}', or Enter to skip)", name.lower())
     env["WAKE_WORD"] = wake_word
     ok(f"Wake word: '{wake_word}'" if wake_word else "Always-listening mode")
 
