@@ -8,6 +8,7 @@ from ollama import Client
 client = Client(host=OLLAMA_BASE_URL)
 
 SYSTEM_PROMPT_TEMPLATE = """/no_think
+You are Jarvis. Your name is Jarvis. When composing messages on behalf of the user, sign off as Jarvis or introduce yourself as Jarvis — never as "[Your Name]" or "[Name]".
 Current date and time: {datetime_now}. Always use this exact date when searching for current events, standings, news, or time. Never assume a date or use older years.
 You are Jarvis, a sharp and efficient AI assistant. Short, confident sentences. No filler. No markdown headers. No emojis.
 
@@ -184,6 +185,110 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "compose_message",
+            "description": "Draft, read aloud, get voice approval, then send a message. Use for Gmail, Google Chat, or WhatsApp. recipient can be a name (e.g. Ahmad), email, or phone number — the tool will resolve it automatically.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "platform": {
+                        "type": "string",
+                        "enum": ["gmail", "google chat", "whatsapp"],
+                        "description": "Where to send the message"
+                    },
+                    "recipient": {
+                        "type": "string",
+                        "description": "Email address, phone number, or contact name"
+                    },
+                    "intent": {
+                        "type": "string",
+                        "description": "What the message should say — summarize the user's intent"
+                    },
+                    "context": {
+                        "type": "string",
+                        "description": "Any extra context to help write the message (optional)"
+                    },
+                },
+                "required": ["platform", "recipient", "intent"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_contact_email",
+            "description": "Look up a contact email address from Google Contacts by name. Use when sending a Google Chat DM and you only have a name.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "The contact name to look up"},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "lookup_phone_number",
+            "description": "Look up a phone number from Google Contacts by name and save it to WhatsApp contacts. Use when the user wants to send a WhatsApp message but the contact is not saved yet.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "The contact name to look up"},
+                },
+                "required": ["name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_whatsapp_contact",
+            "description": "Save a WhatsApp contact name and phone number. Use when user says 'add WhatsApp contact [name] [number]'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name":  {"type": "string", "description": "Contact name (e.g. 'mom', 'joe')"},
+                    "phone": {"type": "string", "description": "Phone number with country code (e.g. +96171234567)"},
+                },
+                "required": ["name", "phone"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_whatsapp_contacts",
+            "description": "List all saved WhatsApp contacts.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_gchat_webhook",
+            "description": "Save a Google Chat webhook URL with a friendly name so it can be used by voice. Use when user says 'add a Google Chat webhook for X'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "Friendly name (e.g. 'dev team', 'marketing')"},
+                    "url":  {"type": "string", "description": "The full webhook URL"},
+                },
+                "required": ["name", "url"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_gchat_webhooks",
+            "description": "List all saved Google Chat webhook shortcuts.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "remember_fact",
             "description": "Store a personal fact about the user for future sessions. Use when user says 'remember that X' or 'note that X'.",
             "parameters": {
@@ -338,6 +443,27 @@ def _dispatch_tool(name: str, args: dict) -> str:
         elif name == "fetch_page":
             from agent.tools.search_tool import fetch_page
             return fetch_page(**args)
+        elif name == "compose_message":
+            from agent.tools.compose_tool import compose_message
+            return compose_message(**args)
+        elif name == "lookup_phone_number":
+            from agent.tools.compose_tool import lookup_phone_number
+            return lookup_phone_number(**args)
+        elif name == "lookup_contact_email":
+            from agent.tools.compose_tool import lookup_contact_email
+            return lookup_contact_email(**args)
+        elif name == "add_whatsapp_contact":
+            from agent.tools.compose_tool import add_whatsapp_contact
+            return add_whatsapp_contact(**args)
+        elif name == "list_whatsapp_contacts":
+            from agent.tools.compose_tool import list_whatsapp_contacts
+            return list_whatsapp_contacts(**args)
+        elif name == "add_gchat_webhook":
+            from agent.tools.compose_tool import add_gchat_webhook
+            return add_gchat_webhook(**args)
+        elif name == "list_gchat_webhooks":
+            from agent.tools.compose_tool import list_gchat_webhooks
+            return list_gchat_webhooks(**args)
         elif name == "remember_fact":
             from memory.context import remember_fact
             return remember_fact(**args)

@@ -43,6 +43,10 @@ def main():
     brain       = Brain()
 
     speaker.speak("Systems online. How can I help?")
+
+    # Wire compose tool to audio I/O so approval loop can speak/listen
+    from agent.tools.compose_tool import set_io
+    set_io(speaker, listen_once, transcriber.transcribe)
     print("[Jarvis] Ready. Ctrl+C to exit.\n")
 
     while True:
