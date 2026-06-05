@@ -188,7 +188,7 @@ class MemoryReview:
         while pending:
             if listen_fn and transcribe_fn:
                 audio = listen_fn(verbose=False)
-                response = transcribe_fn(audio) if audio else ""
+                response = transcribe_fn(audio) if audio is not None else ""
             else:
                 response = input("You: ").strip()
 
@@ -210,7 +210,7 @@ class MemoryReview:
                 self._say("Which one and what should it say?")
                 if listen_fn and transcribe_fn:
                     audio = listen_fn(verbose=False)
-                    edit_response = transcribe_fn(audio) if audio else ""
+                    edit_response = transcribe_fn(audio) if audio is not None else ""
                 else:
                     edit_response = input("You: ").strip()
 

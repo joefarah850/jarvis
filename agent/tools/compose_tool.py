@@ -195,18 +195,41 @@ def _listen() -> str:
 # ── Approval loop ─────────────────────────────────────────────────────────────
 
 SEND_WORDS   = ["send", "yes", "confirm", "go", "do it", "send it", "sned", "yep", "yeah", "ok", "okay", "sure", "absolutely", "perfect", "great"]
-CANCEL_WORDS = ["cancel", "no", "stop", "forget it", "never mind", "abort"]
-EDIT_WORDS   = ["edit", "change", "make", "rewrite", "fix", "update", "more", "less"]
+# Cancel words only when they appear alone or with "it/the message" — not mid-sentence edit instructions
+CANCEL_PHRASES = ["cancel", "cancel it", "cancel the message", "no don't send", "forget it", "never mind", "abort", "don't send"]
+EDIT_WORDS     = ["edit", "change", "make", "rewrite", "fix", "update", "more", "less",
+                  "remove", "add", "replace", "instead", "don't say", "without", "shorten",
+                  "longer", "shorter", "formal", "casual", "tone", "rephrase"]
 
 
 def _parse_intent(text: str) -> str:
     """Returns 'send', 'cancel', or 'edit'."""
-    t = text.lower()
-    if any(w in t for w in SEND_WORDS):
+    t    = text.lower().strip()
+    tlen = len(t.split())
+
+    # Send — short clear confirmations
+    if any(t == w or t.startswith(w + " ") for w in ["send", "yes", "yep", "yeah", "ok", "okay",
+                                                        "sure", "go", "perfect", "great", "sned"]):
         return "send"
-    if any(w in t for w in CANCEL_WORDS):
+    if any(w in t for w in ["send it", "do it", "confirm", "absolutely"]):
+        return "send"
+
+    # Cancel — only exact phrases, not mid-sentence
+    if any(t == p or t == p + "." for p in CANCEL_PHRASES):
         return "cancel"
-    return "edit"   # default — treat anything else as edit instruction
+    # "no" alone = cancel, but "no, remove X" = edit
+    if t in ("no", "no.", "nope", "nope.") and tlen <= 2:
+        return "cancel"
+
+    # Edit — if it contains edit words and is longer than a simple command
+    if any(w in t for w in EDIT_WORDS):
+        return "edit"
+
+    # Default: if it's a longer sentence it's probably an edit instruction
+    if tlen > 3:
+        return "edit"
+
+    return "cancel"
 
 
 def _read_message_aloud(platform: str, message: str):
@@ -582,16 +605,18 @@ def send_whatsapp(recipient: str, message: str) -> str:
 
     if not phone:
         import json
+        # Last resort — tell user what we have and what to do
         contacts_file = _REPO_ROOT / "whatsapp_contacts.json"
+        known = []
         if contacts_file.exists():
-            contacts = {k: v for k, v in json.load(open(contacts_file, encoding="utf-8")).items() if not k.startswith("_")}
-            names = ", ".join(f'"{k}"' for k in contacts)
-            return (
-                f'Could not find WhatsApp contact for "{recipient}".\n'
-                f"Known contacts: {names}\n"
-                "To add one, say: 'add WhatsApp contact [name] [number]'."
-            )
-        return f'No phone number found for "{recipient}". Add them to whatsapp_contacts.json or say their number directly.'
+            known = list({k: v for k, v in json.load(open(contacts_file, encoding="utf-8")).items()
+                          if not k.startswith("_")}.keys())
+        known_str = ", ".join(f'"{k}"' for k in known) if known else "none"
+        return (
+            f'Could not find a phone number for "{recipient}" in local contacts or Google Contacts.\n'
+            f"Known contacts: {known_str}\n"
+            f"Say: 'add WhatsApp contact {recipient} +[number]' to add them manually."
+        )
 
     # Multiple numbers found — ask user to pick
     if phone.startswith("MULTIPLE:"):
@@ -929,16 +954,33 @@ def lookup_phone_number(name: str) -> str:
         return f"Failed to look up contact: {e}"
 
 
-def add_whatsapp_contact(name: str, phone: str) -> str:
-    """Add or update a WhatsApp contact (name → phone number)."""
+def add_whatsapp_contact(name: str, phone: str = "") -> str:
+    """
+    Add or update a WhatsApp contact.
+    If phone is not provided, auto-looks up from Google Contacts.
+    """
     import json
-    import re
+
+    clean = _clean_name(name)
+
+    # No phone provided — look up from Google Contacts
+    if not phone:
+        result = lookup_phone_number(clean)
+        if "Saved to contacts" in result:
+            return result   # already saved by lookup_phone_number
+        if "MULTIPLE_NUMBERS" in result:
+            return result   # will be handled by send_whatsapp flow
+        return (
+            f'Could not find a phone number for "{name}" in Google Contacts.\n'
+            f"Please provide the number: 'add WhatsApp contact {name} +1234567890'"
+        )
+
     contacts_file = _REPO_ROOT / "whatsapp_contacts.json"
     contacts = {}
     if contacts_file.exists():
         with open(contacts_file, encoding="utf-8") as f:
             contacts = json.load(f)
-    contacts[name.lower()] = phone
+    contacts[clean.lower()] = phone
     with open(contacts_file, "w", encoding="utf-8") as f:
         json.dump(contacts, f, indent=2)
     return f'Saved WhatsApp contact: "{name}" → {phone}'

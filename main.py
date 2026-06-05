@@ -47,6 +47,11 @@ def main():
     # Wire compose tool to audio I/O so approval loop can speak/listen
     from agent.tools.compose_tool import set_io
     set_io(speaker, listen_once, transcriber.transcribe)
+
+    # Start reminder background checker and wire audio I/O
+    from agent.tools.reminder_tool import start_reminder_checker, set_reminder_io
+    set_reminder_io(speaker, listen_once, transcriber.transcribe, brain)
+    start_reminder_checker()
     print("[Jarvis] Ready. Ctrl+C to exit.\n")
 
     while True:

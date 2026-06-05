@@ -30,7 +30,7 @@ Do not summarize content unless the user asks.
 
 General rules:
 - When the user asks about a specific email, answer in 2-3 sentences from the tool result only.
-- When asked to open an app, add a task, or edit a file, just do it and confirm in one sentence.
+- After ANY tool completes successfully, respond in ONE short sentence confirming what was done. Then STOP. Do not ask follow-up questions. Do not offer to do more. Do not say "Shall I...", "Would you like...", "Is there anything else...", "Let me know if...", or any similar phrase. Just confirm and stop.
 - Never generate links or URLs. Never invent information. Never end with filler like "Let me know if...".
 """
 
@@ -59,6 +59,89 @@ TOOLS = [
                 "type": "object",
                 "properties": {
                     "days_ahead": {"type": "integer", "description": "How many days ahead to look (default 7)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_reminder",
+            "description": "Set a one-time or recurring reminder. Jarvis will speak it aloud and optionally send a WhatsApp or email notification when it fires.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "message":         {"type": "string",  "description": "What to remind the user (e.g. 'Call John', 'Take medication')"},
+                    "when":            {"type": "string",  "description": "When to fire: 'in 10 minutes', 'at 3pm', 'tomorrow at 9am'"},
+                    "recurrence":      {"type": "string",  "description": "Optional: 'daily', 'weekly', 'hourly', 'weekdays'. Leave empty for one-time."},
+                    "notify_whatsapp": {"type": "string",  "description": "Optional phone number or contact name to also send a WhatsApp message"},
+                    "notify_email":    {"type": "string",  "description": "Optional email address to also send an email notification"},
+                },
+                "required": ["message", "when"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_reminders",
+            "description": "List all active reminders.",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_reminder",
+            "description": "Cancel a reminder by its ID number.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "reminder_id": {"type": "integer", "description": "The reminder ID to cancel"},
+                },
+                "required": ["reminder_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_todos",
+            "description": "List all tasks in the todo list. Use when user asks to see, show, or list their tasks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "show_done": {"type": "boolean", "description": "If true, also show completed tasks. Default false."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "complete_todo",
+            "description": "Mark a todo task as done. Use task_name when the user mentions the task by name, task_id when they give a number.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "task_id":   {"type": "integer", "description": "The task ID number to mark as done (optional)"},
+                    "task_name": {"type": "string",  "description": "The task name or description to match (optional)"},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "clear_todos",
+            "description": "Clear the todo list. Removes all tasks or just completed ones.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "completed_only": {"type": "boolean", "description": "If true, only remove completed tasks. If false (default), clear everything."},
                 },
                 "required": [],
             },
@@ -244,14 +327,14 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "add_whatsapp_contact",
-            "description": "Save a WhatsApp contact name and phone number. Use when user says 'add WhatsApp contact [name] [number]'.",
+            "description": "Save a WhatsApp contact. If only a name is given (no number), auto-looks up from Google Contacts. Use when user says 'add WhatsApp contact [name]' or 'add WhatsApp contact [name] [number]'.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "name":  {"type": "string", "description": "Contact name (e.g. 'mom', 'joe')"},
-                    "phone": {"type": "string", "description": "Phone number with country code (e.g. +96171234567)"},
+                    "name":  {"type": "string", "description": "Contact name (e.g. 'emile', 'mom')"},
+                    "phone": {"type": "string", "description": "Phone number with country code (optional — leave empty to auto-lookup from Google Contacts)"},
                 },
-                "required": ["name", "phone"],
+                "required": ["name"],
             },
         },
     },
@@ -383,11 +466,23 @@ TOOLS = [
 ]
 
 
+_FILLER_ENDINGS = [
+    r"[Ss]hall I [^?]{0,80}\?",
+    r"[Ww]ould you like [^?]{0,80}\?",
+    r"[Ii]s there anything else[^?]{0,60}\?",
+    r"[Ll]et me know if[^.]{0,80}\.",
+    r"[Ll]et me know (how|what)[^.]{0,80}\.",
+    r"[Hh]ow can I (assist|help) you[^?]{0,40}\?",
+    r"[Ff]eel free to [^.]{0,60}\.",
+]
+
 def _clean_response(text: str) -> str:
     text = re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
     text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)
     text = re.sub(r'https?://\S+', '', text)
-    return text.strip()
+    for pattern in _FILLER_ENDINGS:
+        text = re.sub(pattern, '', text)
+    return text.strip().rstrip('.')  
 
 
 def _format_emails(raw_result: str) -> str:
@@ -416,9 +511,27 @@ def _dispatch_tool(name: str, args: dict) -> str:
         elif name == "get_calendar_events":
             from agent.tools.calendar_tool import get_calendar_events
             return get_calendar_events(**args)
+        elif name == "set_reminder":
+            from agent.tools.reminder_tool import set_reminder
+            return set_reminder(**args)
+        elif name == "list_reminders":
+            from agent.tools.reminder_tool import list_reminders
+            return list_reminders(**args)
+        elif name == "cancel_reminder":
+            from agent.tools.reminder_tool import cancel_reminder
+            return cancel_reminder(**args)
         elif name == "add_todo":
             from agent.tools.todo_tool import add_todo
             return add_todo(**args)
+        elif name == "clear_todos":
+            from agent.tools.todo_tool import clear_todos
+            return clear_todos(**args)
+        elif name == "list_todos":
+            from agent.tools.todo_tool import list_todos
+            return list_todos(**args)
+        elif name == "complete_todo":
+            from agent.tools.todo_tool import complete_todo
+            return complete_todo(**args)
         elif name == "web_search":
             from agent.tools.search_tool import web_search
             return web_search(**args)
@@ -503,9 +616,16 @@ class Brain:
         Detect if user wants to edit a specific file. Returns resolved path or None.
         Handles spoken filenames like "system tool dot py" -> "agent/tools/system_tool.py".
         """
-        edit_verbs = ['edit', 'add', 'modify', 'update', 'change', 'insert',
+        edit_verbs = ['edit', 'modify', 'update', 'insert',
                       'append', 'remove', 'delete', 'fix', 'refactor', 'rename', 'clear', 'replace']
-        if not any(v in user_input.lower() for v in edit_verbs):
+        # Skip phrases that are clearly tool/contact operations not file edits
+        skip_phrases = ['whatsapp contact', 'gchat webhook', 'whatsapp number',
+                        'reminder', 'todo', 'calendar', 'email to', 'message to',
+                        'add contact', 'save contact']
+        user_lower = user_input.lower()
+        if any(p in user_lower for p in skip_phrases):
+            return None
+        if not any(v in user_lower for v in edit_verbs):
             return None
 
         # Try exact match first (typed input)

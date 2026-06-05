@@ -50,11 +50,49 @@ def list_todos(show_done: bool = False) -> str:
     return "\n".join(lines)
 
 
-def complete_todo(task_id: int) -> str:
+def complete_todo(task_id: int = 0, task_name: str = "") -> str:
+    """Mark a task as done by ID or by name (fuzzy match)."""
     todos = _load()
-    for t in todos:
-        if t["id"] == task_id:
-            t["done"] = True
+
+    # Match by ID first
+    if task_id:
+        for t in todos:
+            if t["id"] == task_id:
+                t["done"] = True
+                _save(todos)
+                return f"Marked as done: '{t['task']}'"
+        return f"Task #{task_id} not found."
+
+    # Match by name
+    if task_name:
+        name_l = task_name.lower()
+        best, best_score = None, 0
+        for t in todos:
+            task_l = t["task"].lower()
+            # Score by overlap
+            score = sum(1 for w in name_l.split() if w in task_l)
+            if score > best_score:
+                best_score = score
+                best = t
+        if best and best_score > 0:
+            best["done"] = True
             _save(todos)
-            return f"Marked #{task_id} as done: '{t['task']}'"
-    return f"Task #{task_id} not found."
+            return f"Marked as done: '{best['task']}'"
+        return f"Could not find a task matching '{task_name}'."
+
+    return "Please provide a task ID or name."
+
+
+def clear_todos(completed_only: bool = False) -> str:
+    """Clear all todos or just completed ones."""
+    todos = _load()
+    if not todos:
+        return "Todo list is already empty."
+    if completed_only:
+        before = len(todos)
+        todos  = [t for t in todos if not t["done"]]
+        removed = before - len(todos)
+        _save(todos)
+        return f"Removed {removed} completed task(s)."
+    _save([])
+    return f"Cleared all {len(todos)} tasks from the todo list."
