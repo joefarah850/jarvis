@@ -2,7 +2,8 @@
 Jarvis Setup Wizard
 -------------------
 Run this once after cloning the repo. It will:
-  1. Create a virtual environment and install dependencies
+  1. Create a virtual environment and install Python dependencies
+  1b. Install Node.js / Electron UI dependencies
   2. Check / download Ollama and the LLM model
   3. Download the Kokoro TTS model files
   4. Detect your hardware and set Whisper settings
@@ -109,6 +110,45 @@ def setup_venv() -> Path:
     run([str(pip), "install", "-r", str(REPO_ROOT / "requirements.txt"), "-q"])
     ok("All dependencies installed")
     return python
+
+
+# ── Step 1b: Node.js / npm ───────────────────────────────────────────────────
+
+def setup_node():
+    title("Step 1b — Node.js & Electron UI")
+
+    # Check Node.js
+    if shutil.which("node") is None:
+        warn("Node.js not found.")
+        info("Please install Node.js from https://nodejs.org (LTS version)")
+        if confirm("Open Node.js download page now?"):
+            import webbrowser
+            webbrowser.open("https://nodejs.org")
+        info("After installing Node.js, re-run this setup script.")
+        sys.exit(0)
+    else:
+        try:
+            result = run(["node", "--version"], capture=True, check=False)
+            version = result.stdout.decode().strip() if result.stdout else "unknown"
+            ok(f"Node.js installed: {version}")
+        except Exception:
+            ok("Node.js installed")
+
+    # Check npm
+    if shutil.which("npm") is None:
+        warn("npm not found — it should come with Node.js. Please reinstall Node.js.")
+        sys.exit(0)
+
+    # Install Electron dependencies
+    ui_dir = REPO_ROOT / "ui"
+    node_modules = ui_dir / "node_modules"
+
+    if node_modules.exists() and (node_modules / "electron").exists():
+        ok("Electron dependencies already installed")
+    else:
+        step("Installing Electron dependencies (this may take a minute)...")
+        run(["npm", "install"], cwd=str(ui_dir))
+        ok("Electron dependencies installed")
 
 
 # ── Step 2: Ollama ────────────────────────────────────────────────────────────
@@ -558,6 +598,7 @@ def main():
     env = {}
 
     setup_venv()
+    setup_node()
     setup_ollama(env)
     setup_kokoro()
     setup_hardware(env)

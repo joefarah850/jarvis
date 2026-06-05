@@ -1,19 +1,19 @@
 <div align="center">
 
 ```
- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
- ░                                                      ░
- ░       ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗       ░
- ░       ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝       ░
- ░       ██║███████║██████╔╝██║   ██║██║███████╗       ░
- ░  ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║       ░
- ░  ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║       ░
- ░   ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝       ░
- ░                                                      ░
- ░       J U S T - A - R A T H E R - V E R Y -         ░
- ░       I N T E L L I G E N T - S Y S T E M           ░
- ░                                                      ░
- ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+                    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
+                    ░                                                     ░
+                    ░       ██╗ █████╗ ██████╗ ██╗   ██╗██╗███████╗       ░
+                    ░       ██║██╔══██╗██╔══██╗██║   ██║██║██╔════╝       ░
+                    ░       ██║███████║██████╔╝██║   ██║██║███████╗       ░
+                    ░  ██   ██║██╔══██║██╔══██╗╚██╗ ██╔╝██║╚════██║       ░
+                    ░  ╚█████╔╝██║  ██║██║  ██║ ╚████╔╝ ██║███████║       ░
+                    ░   ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝  ╚═══╝  ╚═╝╚══════╝       ░
+                    ░                                                     ░
+                    ░       J U S T - A - R A T H E R - V E R Y -         ░
+                    ░       I N T E L L I G E N T - S Y S T E M           ░
+                    ░                                                     ░
+                    ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░
 ```
 
 **A fully local, voice-controlled AI assistant inspired by Iron Man's J.A.R.V.I.S.**  
@@ -93,6 +93,7 @@ It comes with an **Iron Man-style HUD** built in Electron, a wake word, voice-to
 | GPU | Optional | NVIDIA 6 GB VRAM (RTX 3060+) |
 | Storage | 5 GB | 10 GB |
 | Node.js | 18+ | 20+ (for Electron UI) |
+| npm | 9+ | comes with Node.js |
 | Ollama | Latest | Latest |
 
 > **Apple Silicon Macs** work great — unified memory handles the LLM efficiently without a GPU.
@@ -119,7 +120,8 @@ python setup.py
 ```
 
 The setup wizard will:
-- Create a virtual environment and install all dependencies
+- Create a virtual environment and install all Python dependencies
+- Install Node.js / Electron UI dependencies (`npm install`)
 - Download the Ollama model of your choice
 - Download the Kokoro TTS voice model
 - Detect your GPU and configure Whisper
@@ -129,15 +131,7 @@ The setup wizard will:
 - Create `whatsapp_contacts.json` and `gchat_webhooks.json`
 - Write your `.env` configuration file
 
-### 4. Install Electron UI dependencies
-
-```bash
-cd ui
-npm install
-cd ..
-```
-
-### 5. Run Jarvis
+### 4. Run Jarvis
 
 **Windows** — double-click `run_jarvis.vbs`
 
