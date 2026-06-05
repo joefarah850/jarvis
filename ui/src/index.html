@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>J.A.R.V.I.S</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --blue:    #00d4ff;
+    --gold:    #ffa500;
+    --green:   #00ff88;
+    --red:     #ff4444;
+    --dim:     rgba(0, 212, 255, 0.15);
+    --dimgold: rgba(255, 165, 0, 0.15);
+    --bg:      rgba(0, 5, 15, 0.92);
+    --text:    #7ecfff;
+    --mono:    'Share Tech Mono', monospace;
+    --hud:     'Orbitron', sans-serif;
+  }
+
+  html, body {
+    width: 100vw; height: 100vh;
+    background: var(--bg);
+    color: var(--blue);
+    font-family: var(--mono);
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── Scanline overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 2px,
+      rgba(0,212,255,0.015) 2px, rgba(0,212,255,0.015) 4px
+    );
+    pointer-events: none; z-index: 1000;
+  }
+
+  /* ── Corner brackets ── */
+  .corner { position: fixed; width: 60px; height: 60px; z-index: 100; }
+  .corner::before, .corner::after { content: ''; position: absolute; background: var(--blue); }
+  .corner::before { width: 100%; height: 2px; }
+  .corner::after  { width: 2px; height: 100%; }
+  .corner.tl { top: 16px; left: 16px; }
+  .corner.tr { top: 16px; right: 16px; transform: scaleX(-1); }
+  .corner.bl { bottom: 16px; left: 16px; transform: scaleY(-1); }
+  .corner.br { bottom: 16px; right: 16px; transform: scale(-1); }
+
+  /* ── Top bar ── */
+  #topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 52px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 80px;
+    border-bottom: 1px solid var(--dim);
+    background: rgba(0,10,25,0.7);
+    z-index: 50;
+    font-family: var(--hud);
+  }
+  #topbar .logo { font-size: 18px; font-weight: 900; letter-spacing: 8px; color: var(--blue); }
+  #topbar .logo span { color: var(--gold); }
+  #stats { display: flex; gap: 32px; font-size: 11px; color: var(--text); }
+  #stats .stat { display: flex; flex-direction: column; align-items: center; }
+  #stats .stat .val { font-size: 16px; color: var(--blue); font-family: var(--hud); }
+  #topbar .controls { display: flex; gap: 12px; }
+  .ctrl-btn {
+    background: none; border: 1px solid var(--dim);
+    color: var(--text); font-family: var(--mono);
+    font-size: 10px; padding: 4px 10px;
+    cursor: pointer; letter-spacing: 2px;
+    transition: all 0.2s;
+  }
+  .ctrl-btn:hover { border-color: var(--blue); color: var(--blue); background: var(--dim); }
+
+  /* ── Main layout ── */
+  #main {
+    position: fixed; top: 52px; bottom: 0; left: 0; right: 0;
+    display: grid;
+    grid-template-columns: 280px 1fr 280px;
+    gap: 0;
+  }
+
+  /* ── Panels ── */
+  .panel {
+    padding: 20px 16px;
+    border-right: 1px solid var(--dim);
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .panel:last-child { border-right: none; border-left: 1px solid var(--dim); }
+  .panel-title {
+    font-family: var(--hud);
+    font-size: 10px; letter-spacing: 4px;
+    color: var(--gold); margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--dimgold);
+  }
+
+  /* ── Transcript ── */
+  #transcript { display: flex; flex-direction: column; gap: 12px; }
+  .msg {
+    padding: 8px 12px;
+    border-left: 2px solid;
+    font-size: 12px; line-height: 1.6;
+    animation: fadeIn 0.3s ease;
+  }
+  .msg.user    { border-color: var(--gold); background: var(--dimgold); color: #ffd080; }
+  .msg.jarvis  { border-color: var(--blue); background: var(--dim);     color: var(--blue); }
+  .msg .time   { font-size: 9px; opacity: 0.5; margin-bottom: 2px; letter-spacing: 2px; }
+  .msg .label  { font-family: var(--hud); font-size: 9px; letter-spacing: 3px; margin-bottom: 4px; }
+
+  /* ── Center orb area ── */
+  #center {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+
+  /* Radar sweep */
+  #radar {
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    border: 1px solid var(--dim);
+  }
+  #radar::before, #radar::after {
+    content: ''; position: absolute;
+    border-radius: 50%; border: 1px solid var(--dim);
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+  }
+  #radar::before { width: 66%; height: 66%; }
+  #radar::after  { width: 33%; height: 33%; }
+
+  .radar-line {
+    position: absolute;
+    width: 50%; height: 1px;
+    top: 50%; left: 50%;
+    transform-origin: left center;
+    background: linear-gradient(90deg, var(--blue), transparent);
+    animation: radarSpin 4s linear infinite;
+    opacity: 0.6;
+  }
+  .radar-sweep {
+    position: absolute;
+    width: 300px; height: 300px;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 270deg, rgba(0,212,255,0.15) 360deg);
+    animation: radarSpin 4s linear infinite;
+  }
+
+  /* Cross-hairs */
+  .crosshair-h, .crosshair-v {
+    position: absolute; background: var(--dim);
+  }
+  .crosshair-h { width: 600px; height: 1px; top: 50%; }
+  .crosshair-v { height: 600px; width: 1px; left: 50%; }
+
+  /* Orb */
+  #orb-wrap {
+    position: relative; z-index: 10;
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+  }
+  #orb {
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.4s ease;
+  }
+  #orb::before {
+    content: '';
+    position: absolute; inset: -12px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    opacity: 0.3;
+    animation: orbPulse 2s ease-in-out infinite;
+  }
+  #orb::after {
+    content: '';
+    position: absolute; inset: -24px;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    opacity: 0.15;
+    animation: orbPulse 2s ease-in-out infinite 0.5s;
+  }
+  #orb svg { width: 80px; height: 80px; }
+
+  /* Orb states */
+  #orb.idle     { color: var(--blue);  background: radial-gradient(circle, rgba(0,212,255,0.2), rgba(0,212,255,0.05)); box-shadow: 0 0 40px rgba(0,212,255,0.3); }
+  #orb.listening{ color: var(--blue);  background: radial-gradient(circle, rgba(0,212,255,0.4), rgba(0,212,255,0.1)); box-shadow: 0 0 80px rgba(0,212,255,0.6); animation: listenPulse 1s ease-in-out infinite; }
+  #orb.thinking { color: var(--gold);  background: radial-gradient(circle, rgba(255,165,0,0.4),  rgba(255,165,0,0.1));  box-shadow: 0 0 80px rgba(255,165,0,0.6);  animation: thinkSpin 2s linear infinite; }
+  #orb.speaking { color: var(--green); background: radial-gradient(circle, rgba(0,255,136,0.4), rgba(0,255,136,0.1)); box-shadow: 0 0 80px rgba(0,255,136,0.6);  animation: speakPulse 0.5s ease-in-out infinite; }
+
+  /* Status label */
+  #status-label {
+    font-family: var(--hud);
+    font-size: 13px; letter-spacing: 8px;
+    text-transform: uppercase;
+    transition: color 0.4s;
+  }
+
+  /* Waveform */
+  #waveform {
+    display: flex; align-items: center; gap: 3px;
+    height: 40px;
+  }
+  .wave-bar {
+    width: 3px; border-radius: 2px;
+    background: var(--blue);
+    animation: waveDance 0.8s ease-in-out infinite;
+    transform-origin: bottom;
+  }
+
+  /* ── Right panel items ── */
+  .todo-item, .reminder-item, .memory-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 11px; color: var(--text);
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0,212,255,0.05);
+    line-height: 1.5;
+  }
+  .todo-item .bullet  { color: var(--blue); flex-shrink: 0; }
+  .reminder-item .time-badge {
+    font-size: 9px; color: var(--gold);
+    background: var(--dimgold); padding: 2px 6px;
+    border-radius: 2px; flex-shrink: 0;
+  }
+  .memory-item::before { content: '◆'; color: var(--blue); font-size: 8px; flex-shrink: 0; margin-top: 3px; }
+  .empty-state { font-size: 11px; color: rgba(0,212,255,0.3); font-style: italic; padding: 12px 0; }
+
+  /* ── Bottom bar ── */
+  #bottombar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 36px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 80px;
+    border-top: 1px solid var(--dim);
+    background: rgba(0,10,25,0.7);
+    z-index: 50;
+    font-size: 9px; letter-spacing: 3px; color: rgba(0,212,255,0.4);
+    font-family: var(--hud);
+  }
+
+  /* ── Animations ── */
+  @keyframes radarSpin  { to { transform: rotate(360deg); } }
+  @keyframes orbPulse   { 0%,100%{transform:scale(1);opacity:0.3} 50%{transform:scale(1.1);opacity:0.6} }
+  @keyframes listenPulse{ 0%,100%{box-shadow:0 0 40px rgba(0,212,255,0.4)} 50%{box-shadow:0 0 100px rgba(0,212,255,0.8)} }
+  @keyframes thinkSpin  { to{filter:hue-rotate(360deg)} }
+  @keyframes speakPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.04)} }
+  @keyframes waveDance  { 0%,100%{transform:scaleY(0.2)} 50%{transform:scaleY(1)} }
+  @keyframes fadeIn     { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:none} }
+  @keyframes blink      { 0%,100%{opacity:1} 50%{opacity:0} }
+</style>
+</head>
+<body>
+
+<!-- Corner brackets -->
+<div class="corner tl"></div>
+<div class="corner tr"></div>
+<div class="corner bl"></div>
+<div class="corner br"></div>
+
+<!-- Top bar -->
+<div id="topbar">
+  <div class="logo">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div>
+  <div id="stats">
+    <div class="stat"><span class="val" id="stat-time">--:--</span><span>LOCAL TIME</span></div>
+    <div class="stat"><span class="val" id="stat-date">---</span><span>DATE</span></div>
+    <div class="stat"><span class="val" id="stat-cpu">--%</span><span>CPU</span></div>
+    <div class="stat"><span class="val" id="stat-ram">--%</span><span>RAM</span></div>
+  </div>
+  <div class="controls">
+    <button class="ctrl-btn" onclick="clearTranscript()">CLEAR</button>
+    <button class="ctrl-btn" id="mute-btn" onclick="toggleMute()">MUTE</button>
+    <button class="ctrl-btn" onclick="window.electronAPI?.closeApp()">EXIT</button>
+  </div>
+</div>
+
+<!-- Main layout -->
+<div id="main">
+
+  <!-- Left: Transcript -->
+  <div class="panel">
+    <div class="panel-title">◈ CONVERSATION LOG</div>
+    <div id="transcript"></div>
+  </div>
+
+  <!-- Center: Orb + Radar -->
+  <div id="center">
+    <div id="radar">
+      <div class="radar-sweep"></div>
+      <div class="radar-line"></div>
+      <div class="crosshair-h"></div>
+      <div class="crosshair-v"></div>
+    </div>
+
+    <div id="orb-wrap">
+      <div id="orb" class="idle">
+        <!-- Arc reactor icon -->
+        <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="40" cy="40" r="30" stroke="currentColor" stroke-width="1.5" opacity="0.6"/>
+          <circle cx="40" cy="40" r="18" stroke="currentColor" stroke-width="1.5" opacity="0.8"/>
+          <circle cx="40" cy="40" r="8"  fill="currentColor" opacity="0.9"/>
+          <line x1="40" y1="10" x2="40" y2="22" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="40" y1="58" x2="40" y2="70" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="10" y1="40" x2="22" y2="40" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="58" y1="40" x2="70" y2="40" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="18.8" y1="18.8" x2="27.3" y2="27.3" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="52.7" y1="52.7" x2="61.2" y2="61.2" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="61.2" y1="18.8" x2="52.7" y2="27.3" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="27.3" y1="52.7" x2="18.8" y2="61.2" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <div id="status-label" style="color:var(--blue)">STANDBY</div>
+
+      <div id="waveform">
+        <!-- bars injected by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Todos, Reminders, Memory -->
+  <div class="panel">
+    <div class="panel-title">◈ ACTIVE TASKS</div>
+    <div id="todos"><div class="empty-state">No pending tasks</div></div>
+
+    <div class="panel-title" style="margin-top:24px">◈ REMINDERS</div>
+    <div id="reminders"><div class="empty-state">No active reminders</div></div>
+
+    <div class="panel-title" style="margin-top:24px">◈ MEMORY</div>
+    <div id="memory"><div class="empty-state">No stored facts</div></div>
+  </div>
+
+</div>
+
+<!-- Bottom bar -->
+<div id="bottombar">
+  <span>JARVIS v1.0 // ONLINE</span>
+  <span id="conn-status">◉ CONNECTING...</span>
+  <span>PRESS ESC TO EXIT FULLSCREEN</span>
+</div>
+
+<script>
+// ── Waveform bars ─────────────────────────────────────────────────────────────
+const waveform = document.getElementById('waveform')
+const BAR_COUNT = 24
+for (let i = 0; i < BAR_COUNT; i++) {
+  const bar = document.createElement('div')
+  bar.className = 'wave-bar'
+  bar.style.height = '20px'
+  bar.style.animationDelay = `${(i / BAR_COUNT * 0.8).toFixed(2)}s`
+  bar.style.animationDuration = `${0.5 + Math.random() * 0.5}s`
+  waveform.appendChild(bar)
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let muted = false
+let ws    = null
+
+// ── WebSocket connection ──────────────────────────────────────────────────────
+function connect() {
+  ws = new WebSocket('ws://localhost:6789')
+
+  ws.onopen = () => {
+    document.getElementById('conn-status').textContent = '◉ CONNECTED'
+    document.getElementById('conn-status').style.color = 'var(--green)'
+  }
+
+  ws.onclose = () => {
+    document.getElementById('conn-status').textContent = '◎ OFFLINE'
+    document.getElementById('conn-status').style.color = 'var(--red)'
+    setTimeout(connect, 3000)   // auto-reconnect
+  }
+
+  ws.onerror = () => {
+    document.getElementById('conn-status').textContent = '◎ ERROR'
+    document.getElementById('conn-status').style.color = 'var(--red)'
+  }
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data)
+    handlers[msg.type]?.(msg)
+  }
+}
+
+// ── Message handlers ──────────────────────────────────────────────────────────
+const orb         = document.getElementById('orb')
+const statusLabel = document.getElementById('status-label')
+
+const STATUS_COLORS = {
+  idle:      'var(--blue)',
+  listening: 'var(--blue)',
+  thinking:  'var(--gold)',
+  speaking:  'var(--green)',
+}
+const STATUS_TEXT = {
+  idle:      'STANDBY',
+  listening: 'LISTENING',
+  thinking:  'PROCESSING',
+  speaking:  'SPEAKING',
+}
+
+const handlers = {
+  status(msg) {
+    orb.className = msg.value
+    statusLabel.textContent = STATUS_TEXT[msg.value] || msg.value.toUpperCase()
+    statusLabel.style.color = STATUS_COLORS[msg.value] || 'var(--blue)'
+
+    const bars = waveform.querySelectorAll('.wave-bar')
+    const color = STATUS_COLORS[msg.value] || 'var(--blue)'
+
+    if (msg.value === 'speaking') {
+      // Animate bars with random heights for speech effect
+      bars.forEach((b, i) => {
+        b.style.background = color
+        b.style.animationPlayState = 'running'
+        b.style.animationDuration = `${0.3 + Math.random() * 0.4}s`
+      })
+    } else if (msg.value === 'listening') {
+      bars.forEach((b, i) => {
+        b.style.background = color
+        b.style.animationPlayState = 'running'
+        b.style.animationDuration = `${0.6 + Math.random() * 0.6}s`
+      })
+    } else {
+      // Idle / thinking — flat bars
+      bars.forEach(b => {
+        b.style.background = color
+        b.style.animationPlayState = 'paused'
+        b.style.transform = 'scaleY(0.15)'
+      })
+    }
+  },
+
+  transcript(msg) {
+    const div = document.createElement('div')
+    div.className = `msg ${msg.role}`
+    div.innerHTML = `
+      <div class="label">${msg.role === 'user' ? '▶ YOU' : '◈ JARVIS'}</div>
+      <div class="time">${msg.time || ''}</div>
+      <div>${msg.text}</div>
+    `
+    const container = document.getElementById('transcript')
+    container.appendChild(div)
+    container.scrollTop = container.scrollHeight
+  },
+
+  clear_transcript() {
+    document.getElementById('transcript').innerHTML = ''
+  },
+
+  todos(msg) {
+    const el = document.getElementById('todos')
+    if (!msg.items?.length) {
+      el.innerHTML = '<div class="empty-state">No pending tasks</div>'
+      return
+    }
+    el.innerHTML = msg.items.map(t => `
+      <div class="todo-item">
+        <span class="bullet">▸</span>
+        <span>${t.task} <span style="opacity:0.4;font-size:9px">[${t.priority}]</span></span>
+      </div>
+    `).join('')
+  },
+
+  reminders(msg) {
+    const el = document.getElementById('reminders')
+    if (!msg.items?.length) {
+      el.innerHTML = '<div class="empty-state">No active reminders</div>'
+      return
+    }
+    el.innerHTML = msg.items.map(r => `
+      <div class="reminder-item">
+        <span class="time-badge">${r.fire_time}</span>
+        <span>${r.message}${r.recurrence ? ` <span style="opacity:0.5">[${r.recurrence}]</span>` : ''}</span>
+      </div>
+    `).join('')
+  },
+
+  memory(msg) {
+    const el = document.getElementById('memory')
+    if (!msg.facts?.length) {
+      el.innerHTML = '<div class="empty-state">No stored facts</div>'
+      return
+    }
+    el.innerHTML = msg.facts.map(f => `
+      <div class="memory-item"><span>${f}</span></div>
+    `).join('')
+  },
+
+  stats(msg) {
+    document.getElementById('stat-time').textContent = msg.time  || '--:--'
+    document.getElementById('stat-date').textContent = msg.date  || '---'
+    document.getElementById('stat-cpu').textContent  = (msg.cpu ?? '--') + '%'
+    document.getElementById('stat-ram').textContent  = (msg.ram ?? '--') + '%'
+  },
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function toggleMute() {
+  muted = !muted
+  document.getElementById('mute-btn').textContent = muted ? 'UNMUTE' : 'MUTE'
+  document.getElementById('mute-btn').style.borderColor = muted ? 'var(--red)' : ''
+  document.getElementById('mute-btn').style.color = muted ? 'var(--red)' : ''
+  ws?.send(JSON.stringify({ type: muted ? 'mute' : 'unmute' }))
+}
+
+function clearTranscript() {
+  ws?.send(JSON.stringify({ type: 'clear_transcript' }))
+  document.getElementById('transcript').innerHTML = ''
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+connect()
+</script>
+</body>
+</html>

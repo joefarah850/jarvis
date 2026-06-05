@@ -1,9 +1,29 @@
-# .gitignore
+# Node
+ui/node_modules/
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Google auth tokens
+token_*.json
+
+# Sensitive files
+credentials.json
+.env
+memory.json
+
+# Kokoro model files
 *.onnx
 *.bin
-.env
-__pycache__/
-.venv/
-*.json
-.chrome-gchat-profile/
+
+# WhatsApp/Chrome profiles
 .chrome-whatsapp-profile/
+.chrome-gchat-profile/
+
+# Personal data
+whatsapp_contacts.json
+gchat_webhooks.json
+todos.json
+reminders.json
