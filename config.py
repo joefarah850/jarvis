@@ -26,7 +26,7 @@ VAD_SILENCE_TIMEOUT = float(os.getenv("VAD_SILENCE_TIMEOUT", "1.2"))
 # ── File workspace ────────────────────────────────────────────────────────────
 # Root directory Jarvis can read/edit files in.
 # Defaults to repo root. Set to a broader path to allow editing other projects.
-# Example in .env: WORKSPACE_ROOT=C:/Users/Joe Farah/Desktop/Joe
+# Example in .env: WORKSPACE_ROOT=C:/Users/<user>/Desktop
 WORKSPACE_ROOT = os.getenv("WORKSPACE_ROOT", "")
 
 # ── Wake word ────────────────────────────────────────────────────────────────
