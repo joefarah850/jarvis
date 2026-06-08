@@ -105,7 +105,7 @@ It comes with an **Iron Man-style HUD** built in Electron, a wake word, voice-to
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/yourusername/jarvis.git
+git clone https://github.com/joefarah850/jarvis.git
 cd jarvis
 ```
 
